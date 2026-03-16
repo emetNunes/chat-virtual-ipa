@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CodeFlow Chat - Admin</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+      window.USER_ROLE = "admin";
+    </script>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="./chat.js"></script>
+
+    <style>
+      :root {
+        --chat-primary: #29cc5a;
+        --chat-bg: #f0f2f5;
+        --chat-sidebar: #ffffff;
+      }
+
+      body {
+        background-color: var(--chat-bg);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+
+      /* Sidebar de Contatos */
+      #sidebar {
+        width: 350px;
+        background: var(--chat-sidebar);
+        border-right: 1px solid #e0e0e0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar-header {
+        padding: 20px;
+        border-bottom: 1px solid #eee;
+        background: #fff;
+      }
+
+      .user-card {
+        padding: 15px 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-bottom: 1px solid #f8f8f8;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .user-card:hover {
+        background-color: #f5fdf7;
+      }
+
+      .user-card.active {
+        background-color: #e9f9ee;
+        border-left: 4px solid var(--chat-primary);
+      }
+
+      .avatar-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #eee;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      .status-indicator {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid white;
+      }
+
+      /* Área de Chat */
+      #main-chat {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+      }
+
+      .chat-header {
+        padding: 15px 25px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      #chat_content {
+        flex-grow: 1;
+        padding: 25px;
+        background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png"); /* Pattern leve opcional */
+        background-color: #f8f9fa;
+        overflow-y: auto;
+      }
+
+      .msg-admin {
+        background: var(--chat-primary);
+        color: white;
+        align-self: flex-end;
+        border-radius: 18px 18px 4px 18px;
+      }
+
+      .msg-client {
+        background: white;
+        color: #333;
+        align-self: flex-start;
+        border-radius: 18px 18px 18px 4px;
+      }
+
+      /* mensagens estilo */
+
+      #messages {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 24px;
+        overflow-y: auto;
+        background-color: #f8f9fa; /* Fundo levemente acinzentado para destacar os balões */
+        height: 100%;
+
+        height: calc(
+          100vh - 160px
+        ); /* Ajuste o valor para sobrar espaço para o header e footer */
+        overflow-y: auto;
+        scroll-behavior: smooth; /* Reforça a fluidez no navegador */
+      }
+
+      /* Base das Bolhas */
+      .msg-bubble {
+        max-width: 65%; /* Reduzido para não esticar tanto no PC */
+        padding: 12px 16px;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        position: relative;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+      }
+
+      /* Mensagem do CLIENTE (Recebida) */
+      .msg-received {
+        align-self: flex-start;
+        background-color: #ffffff;
+        color: #333;
+        border: 1px solid #e9ecef;
+        border-radius: 4px 18px 18px 18px; /* Design moderno 'invertido' */
+      }
+
+      /* Mensagem do ADMIN (Enviada) */
+      .msg-sent {
+        align-self: flex-end;
+        background-color: #29cc5a;
+        color: white;
+        border-radius: 18px 18px 4px 18px;
+        /* Gradiente sutil para profundidade */
+        background: linear-gradient(135deg, #29cc5a 0%, #24b34e 100%);
+      }
+
+      /* Estilização da Scrollbar (Estilo moderno) */
+      #messages::-webkit-scrollbar {
+        width: 6px;
+      }
+      #messages::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #messages::-webkit-scrollbar-thumb {
+        background: #d1d1d1;
+        border-radius: 10px;
+      }
+      #messages::-webkit-scrollbar-thumb:hover {
+        background: #bbbbbb;
+      }
+
+      /* Timestamp (Opcional - caso queira adicionar hora depois) */
+      .msg-time {
+        display: block;
+        font-size: 0.7rem;
+        margin-top: 4px;
+        opacity: 0.7;
+        text-align: right;
+      }
+
+      /* Input Area */
+
+      .admin-footer {
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #eee;
+      }
+
+      .input-group-custom {
+        background: #f0f2f5;
+        border-radius: 25px;
+        padding: 5px 20px;
+        display: flex;
+        align-items: center;
+      }
+
+      .input-group-custom input {
+        border: none;
+        background: transparent;
+        padding: 10px;
+        width: 100%;
+        outline: none;
+      }
+
+      .btn-send {
+        background: var(--chat-primary);
+        color: white;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+      }
+
+      .btn-send:hover {
+        transform: scale(1.1);
+        background: #24b34e;
+      }
+
+      /* Container dos usuários com rolagem independente */
+      #account_users {
+        height: calc(100vh - 80px); /* Ajuste conforme a altura do seu header */
+        overflow-y: auto;
+        background: #fff;
+      }
+
+      .user-card {
+        padding: 15px 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.2s ease;
+        border-left: 4px solid transparent; /* Para o efeito de seleção */
+      }
+
+      .user-card:hover {
+        background-color: #f8f9fa;
+      }
+
+      /* Classe para quando o chat estiver aberto (adicione via JS no getClientID) */
+      .user-card.active {
+        background-color: #e9f9ee;
+        border-left-color: #29cc5a;
+      }
+
+      .avatar-circle {
+        width: 45px;
+        height: 45px;
+        min-width: 45px;
+        border-radius: 50%;
+        background: #f0f2f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      .status-indicator {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 2px solid white;
+      }
+
+      /* Estilização da barra de rolagem da lista de usuários */
+      #account_users::-webkit-scrollbar {
+        width: 4px;
+      }
+      #account_users::-webkit-scrollbar-thumb {
+        background: #e0e0e0;
+        border-radius: 10px;
+      }
+
+      h6.text-truncate {
+        text-transform: capitalize;
+      }
+
+      /* STILO SEM NADA NO MENSAGEM */
+      /* Container de estado vazio */
+      .empty-chat-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        text-align: center;
+        color: #a0a0a0;
+        background-color: #f8f9fa;
+      }
+
+      .empty-chat-icon {
+        width: 80px;
+        height: 80px;
+        background: #e9ecef;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      .empty-chat-state h4 {
+        color: #495057;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+
+      .empty-chat-state p {
+        max-width: 300px;
+        font-size: 0.9rem;
+      }
+
+      /* Helper para esconder elementos */
+      .hidden-chat-element {
+        display: none !important;
+      }
+
+      /* Divisor de data estilo WhatsApp */
+      .chat-date-separator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 20px 0;
+        position: relative;
+      }
+
+      .chat-date-text {
+        background: rgba(0, 0, 0, 0.05);
+        color: #666;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: capitalize;
+      }
+
+      /* Mensagem de Boas-vindas */
+      .welcome-badge {
+        text-align: center;
+        margin: 15px auto;
+        color: #888;
+        font-size: 0.8rem;
+        background: rgba(0, 0, 0, 0.03);
+        padding: 6px 20px;
+        border-radius: 20px;
+        width: fit-content;
+        border: 1px dashed #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid d-flex p-0 vh-100">
+      <aside id="sidebar">
+        <div class="sidebar-header">
+          <h5 class="fw-bold mb-0 text-success">IPAchat</h5>
+          <small class="text-muted">Central de Atendimento</small>
+        </div>
+
+        <div id="account_users" class="overflow-auto"></div>
+      </aside>
+
+      <main id="main-chat">
+        <header class="chat-header">
+          <div class="d-flex align-items-center gap-3">
+            <div class="avatar-circle" style="width: 40px; height: 40px">
+              <i data-lucide="user" class="text-muted"></i>
+            </div>
+            <div>
+              <h6 id="name_user" class="mb-0 fw-bold"></h6>
+              <small id="status" class="text-success"></small>
+            </div>
+          </div>
+          <div class="d-flex gap-2"></div>
+        </header>
+
+        <div id="messages" class="d-flex flex-column"></div>
+
+        <footer class="admin-footer">
+          <form class="input-group-custom" id="msg_form" name="msg_form">
+            <input
+              type="text"
+              id="msg"
+              name="msg"
+              placeholder="Digite sua resposta..."
+              aria-label="Mensagem"
+            />
+            <button type="submit" class="btn-send">
+              <i data-lucide="send-horizontal" style="width: 18px"></i>
+            </button>
+          </form>
+          <div class="text-center mt-2">
+            <small class="text-muted" style="font-size: 0.7rem"
+              >Atendimento virtual</small
+            >
+          </div>
+        </footer>
+      </main>
+    </div>
+
+    <script>
+      lucide.createIcons();
+
+      // // Auto-scroll para o final das mensagens ao carregar
+      // const chatContent = document.getElementById("chat_content");
+      // chatContent.scrollTop = chatContent.scrollHeight;
+    </script>
+  </body>
+</html>
