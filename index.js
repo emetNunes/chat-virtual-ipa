@@ -28,16 +28,8 @@ let onlineUsers = [];
 let allUser = [];
 let mapRooms;
 
-let socketAdmin;
-
 let admin = io.on("connection", (socket) => {
-  const refere = socket.handshake.headers.referer;
-  const routerAdmin = "http://localhost:3000/admin";
-
   mapRooms = socket.adapter.rooms;
-  if (refere == routerAdmin) {
-    socketAdmin = mapRooms.get("admin");
-  }
 
   socket.on("disconnect", (e) => {
     const user = onlineUsers.find((u) => u.socket === socket.id);
@@ -93,14 +85,12 @@ let admin = io.on("connection", (socket) => {
         }
       }
 
+      console.log(mapRooms);
       if (role == "admin") {
-        if (mapRooms.get("admin") === undefined) {
-          socket.join("admin");
-        } else {
-          if (mapRooms.get("admin") !== mapRooms.get(room)) {
-            socket.leaveAll();
-            socket.join("admin");
-          }
+        socket.join("admin");
+
+        if (userId) {
+          socket.join(room);
         }
       }
 
@@ -127,7 +117,7 @@ let admin = io.on("connection", (socket) => {
     if (!chats[room]) chats[room] = [];
 
     io.to(room).emit("update_msg", chats[room]);
-    io.to(socketAdmin).emit("sendUser", await loadAllUser());
+    io.to("admin").emit("sendUser", await loadAllUser());
   });
 
   socket.on("new_msg", async ({ userId }) => {

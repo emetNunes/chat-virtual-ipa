@@ -87,7 +87,6 @@ function updateMessagesOnScreen(msgs) {
     if (footer) footer.classList.remove("hidden-chat-element");
   }
 
-  console.log(msgs);
   if (!msgs || msgs.length === 0) return;
 
   let html_content = "";
@@ -153,9 +152,8 @@ function updateMessagesOnScreen(msgs) {
     });
 
   // 3. ATUALIZAÇÃO DO DOM
-  // div_msg.innerHTML = html_content;
-  div_msg.insertAdjacentHTML("beforeend", html_content);
-
+  // div_msg.innerHTML = ;
+  div_msg.innerHTML = html_content;
   // 4. ROLAGEM FLUIDA
   // O setTimeout de 0 ou 50ms é essencial para o navegador renderizar o HTML
   // antes de calcular a posição do scroll.
@@ -230,11 +228,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const message = document.forms["msg_form"]["msg"].value;
     document.forms["msg_form"]["msg"].value = "";
 
-    // saveMessage(userId, message);
+    saveMessage(userId, message);
 
-    // socket.emit("admin_msg", {
-    //   userId,
-    // });
+    socket.emit("admin_msg", {
+      userId,
+    });
   });
 });
 
