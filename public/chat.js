@@ -1,11 +1,6 @@
-let userId = window.USER_ID;
-const adminID = 18;
-const role = window.USER_ROLE;
+let userId;
+const role = "admin";
 const socket = io();
-
-if (role !== "admin") {
-  socket.emit("join_chat", { userId, role });
-}
 
 socket.on("send_userSelect", (user) => {
   const userName = user[0].user;
@@ -80,40 +75,19 @@ socket.on("update_msg", (message) => {
   updateMessagesOnScreen(message);
 });
 
-function setEmptyState() {
-  const div_msg = document.querySelector("#messages");
-  const header = document.querySelector(".chat-header");
-  const footer = document.querySelector(".admin-footer");
-
-  header.classList.add("hidden-chat-element");
-  footer.classList.add("hidden-chat-element");
-
-  div_msg.innerHTML = `
-        <div class="empty-chat-state">
-            <div class="empty-chat-icon">
-                <i data-lucide="messages-square" style="width: 40px; height: 40px; color: #29cc5a;"></i>
-            </div>
-            <h4>Suporte IPAchat</h4>
-            <p>Selecione um cliente na lista ao lado para iniciar o atendimento em tempo real.</p>
-        </div>
-    `;
-
-  if (typeof lucide !== "undefined") {
-    lucide.createIcons();
-  }
-}
-
 function updateMessagesOnScreen(msgs) {
   const div_msg = document.querySelector("#messages");
 
   // 1. Controle de visibilidade para o Admin
-  if (typeof role !== "undefined" && role === "admin") {
-    const header = document.querySelector(".chat-header");
-    const footer = document.querySelector(".admin-footer");
+  const header = document.querySelector(".chat-header");
+  const footer = document.querySelector(".admin-footer");
+
+  if (userId !== null) {
     if (header) header.classList.remove("hidden-chat-element");
     if (footer) footer.classList.remove("hidden-chat-element");
   }
 
+  console.log(msgs);
   if (!msgs || msgs.length === 0) return;
 
   let html_content = "";
@@ -179,7 +153,8 @@ function updateMessagesOnScreen(msgs) {
     });
 
   // 3. ATUALIZAÇÃO DO DOM
-  div_msg.innerHTML = html_content;
+  // div_msg.innerHTML = html_content;
+  div_msg.insertAdjacentHTML("beforeend", html_content);
 
   // 4. ROLAGEM FLUIDA
   // O setTimeout de 0 ou 50ms é essencial para o navegador renderizar o HTML
@@ -190,6 +165,29 @@ function updateMessagesOnScreen(msgs) {
       behavior: "smooth",
     });
   }, 50);
+}
+
+function setEmptyState() {
+  const div_msg = document.querySelector("#messages");
+  const header = document.querySelector(".chat-header");
+  const footer = document.querySelector(".admin-footer");
+
+  header.classList.add("hidden-chat-element");
+  footer.classList.add("hidden-chat-element");
+
+  div_msg.innerHTML = `
+        <div class="empty-chat-state">
+            <div class="empty-chat-icon">
+                <i data-lucide="messages-square" style="width: 40px; height: 40px; color: #29cc5a;"></i>
+            </div>
+            <h4>Suporte IPAchat</h4>
+            <p>Selecione um cliente na lista ao lado para iniciar o atendimento em tempo real.</p>
+        </div>
+    `;
+
+  if (typeof lucide !== "undefined") {
+    lucide.createIcons();
+  }
 }
 
 let clientSelect = null;
@@ -232,23 +230,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const message = document.forms["msg_form"]["msg"].value;
     document.forms["msg_form"]["msg"].value = "";
 
-    if (role !== "admin") {
-      saveMessage(userId, "user", message);
+    // saveMessage(userId, message);
 
-      socket.emit("new_msg", {
-        userId,
-      });
-    } else {
-      saveMessage(userId, "admin", message);
-
-      socket.emit("admin_msg", {
-        userId,
-      });
-    }
+    // socket.emit("admin_msg", {
+    //   userId,
+    // });
   });
 });
 
-async function saveMessage(userId, role, message) {
+async function saveMessage(userId, message) {
   await fetch("https://ipa-edu.com.br/ipasis/adm/send_message.php", {
     method: "POST",
     headers: {
@@ -257,7 +247,7 @@ async function saveMessage(userId, role, message) {
     body: JSON.stringify({
       user_id: userId,
       message,
-      status: role,
+      status: "admin",
     }),
   });
 
