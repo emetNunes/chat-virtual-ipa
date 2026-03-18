@@ -83,7 +83,7 @@
       await this.loadScript(
         "https://chat-virtual-ipa.onrender.com/socket.io/socket.io.js",
       );
-      let socket = io();
+      let socket = io("https://chat-virtual-ipa.onrender.com");
 
       const form = document.querySelector("#msg_form");
       let userId = this.config.userId;
