@@ -50,12 +50,13 @@ let admin = io.on("connection", (socket) => {
     if (userId != null && userId !== "") {
       room = `user_${userId}`;
 
+      console.log(role);
       if (role == "user") {
-        await loadUser(userId);
+        let loadUSer = await loadUser(userId);
 
-        // if (mapRooms.get(room) === undefined) {
-        socket.join(room);
-        // }
+        if (loadUSer == [] || loadUSer.length == 0) {
+          await saveUser(userId);
+        }
 
         onlineUsers.push({
           userId: userId,
@@ -177,10 +178,6 @@ async function loadUser(userId) {
 
     if (!res.ok) {
       throw new Error("Erro HTTP");
-    }
-
-    if (res.length == 0) {
-      await saveUser(userId);
     }
 
     return await res.json();

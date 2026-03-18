@@ -80,10 +80,8 @@
       this.injectCSS();
       this.toggleChat();
 
-      await this.loadScript(
-        "https://chat-virtual-ipa.onrender.com/socket.io/socket.io.js",
-      );
-      let socket = io("https://chat-virtual-ipa.onrender.com");
+      await this.loadScript(this.config.socketUrl + "/socket.io/socket.io.js");
+      let socket = io(this.config.socketUrl);
 
       const form = document.querySelector("#msg_form");
       let userId = this.config.userId;
@@ -92,7 +90,6 @@
       socket.emit("join_chat", { userId, role });
 
       socket.on("update_msg", (message) => {
-        console.log(message);
         updateMessagesOnScreen(message);
       });
 
