@@ -138,7 +138,7 @@ function updateMessagesOnScreen(msgs) {
       }
 
       // 3. RENDERIZAÇÃO DA BOLHA
-      const sideClass = msg.status === "admin" ? "msg-sent" : "msg-received";
+      const sideClass = msg.status == "admin" ? "msg-sent" : "msg-received";
       const time = msg.data
         ? `<span class="msg-time">${msg.data.slice(11, 16)}</span>`
         : "";

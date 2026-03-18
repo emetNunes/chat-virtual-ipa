@@ -53,9 +53,9 @@ let admin = io.on("connection", (socket) => {
       if (role == "user") {
         await loadUser(userId);
 
-        if (mapRooms.get(room) === undefined) {
-          socket.join(room);
-        }
+        // if (mapRooms.get(room) === undefined) {
+        socket.join(room);
+        // }
 
         onlineUsers.push({
           userId: userId,

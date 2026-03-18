@@ -147,7 +147,7 @@
 
             // 3. RENDERIZAÇÃO DA BOLHA
             const sideClass =
-              msg.status === "admin" ? "msg-sent" : "msg-received";
+              msg.status === "user" ? "msg-sent" : "msg-received";
             const time = msg.data
               ? `<span class="msg-time">${msg.data.slice(11, 16)}</span>`
               : "";
