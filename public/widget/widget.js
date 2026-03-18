@@ -80,7 +80,9 @@
       this.injectCSS();
       this.toggleChat();
 
-      await this.loadScript("/socket.io/socket.io.js");
+      await this.loadScript(
+        "https://chat-virtual-ipa.onrender.com/socket.io/socket.io.js",
+      );
       let socket = io();
 
       const form = document.querySelector("#msg_form");
