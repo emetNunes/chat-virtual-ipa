@@ -1,6 +1,40 @@
 let userId;
 const role = "admin";
-const socket = io();
+const socket = io("/suport");
+
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.querySelector("#msg_form");
+
+  socket.on("connect", () => {
+    if (userId == null || userId == "") {
+      setEmptyState();
+    }
+
+    socket.on("hola", (event) => {
+      console.log(event);
+    });
+
+    socket.emit("join_chat", { userId, role });
+  });
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    if (!userId) {
+      alert("Defina um usuario!");
+      return;
+    }
+
+    const message = document.forms["msg_form"]["msg"].value;
+    document.forms["msg_form"]["msg"].value = "";
+
+    saveMessage(userId, message);
+
+    socket.emit("admin_msg", {
+      userId,
+    });
+  });
+});
 
 socket.on("send_userSelect", (user) => {
   const userName = user[0].user;
@@ -205,36 +239,6 @@ function getClientID(client) {
   socket.emit("join_chat", { userId, role });
   console.log("Iniciando chat com:", userId);
 }
-
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.querySelector("#msg_form");
-
-  socket.on("connect", () => {
-    if (userId == null || userId == "") {
-      setEmptyState();
-    }
-
-    socket.emit("join_chat", { userId, role });
-  });
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    if (!userId) {
-      alert("Defina um usuario!");
-      return;
-    }
-
-    const message = document.forms["msg_form"]["msg"].value;
-    document.forms["msg_form"]["msg"].value = "";
-
-    saveMessage(userId, message);
-
-    socket.emit("admin_msg", {
-      userId,
-    });
-  });
-});
 
 async function saveMessage(userId, message) {
   await fetch("https://ipa-edu.com.br/ipasis/adm/send_message.php", {

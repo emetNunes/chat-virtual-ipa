@@ -3,14 +3,14 @@ const app = express();
 const path = require("path");
 const socketIO = require("socket.io");
 
-app.use("/", express.static(path.join(__dirname, "public")));
+app.use("/", express.static(path.join(__dirname, "public/widget")));
+
+app.get("/chat", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "chat.js"));
+});
 
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
-});
-
-app.get("/widget", (req, res) => {
-  res.sendFile(path.join(__dirname, "public/widget", "index.html"));
 });
 
 const server = app.listen(3000, () => {
@@ -23,111 +23,133 @@ const io = socketIO(server, {
   },
 });
 
+// FUNCIONAMENTO DO SOCKET
+
 const chats = {};
 let onlineUsers = [];
 let allUser = [];
 let mapRooms;
 
-let admin = io.on("connection", (socket) => {
+const suportNamespace = io.of("/suport");
+
+suportNamespace.on("connection", (socket) => {
   mapRooms = socket.adapter.rooms;
 
-  socket.on("disconnect", (e) => {
-    const user = onlineUsers.find((u) => u.socket === socket.id);
-
-    if (!user) return;
-
-    onlineUsers = onlineUsers.filter((u) => u.socket !== socket.id);
-
-    io.to("admin").emit("send_connection", {
-      userId: user.userId,
-      status: "offline",
-    });
+  socket.on("disconnecting", () => {
+    console.log("client desconectou do servidor:" + socket.id);
   });
 
-  socket.on("join_chat", async ({ userId, role }) => {
-    let room;
+  socket.join("room1");
 
-    if (userId != null && userId !== "") {
-      room = `user_${userId}`;
+  suportNamespace.to("room1").emit("hola", "sucesso!" + socket.id);
+});
 
-      console.log(role);
-      if (role == "user") {
-        let loadUSer = await loadUser(userId);
+io.on("connection1", (socket) => {
+  console.log("client conectado" + socket.id);
 
-        if (loadUSer == [] || loadUSer.length == 0) {
-          await saveUser(userId);
-        }
+  // socket.on("disconnect", () => {
+  //   console.log("client desconectou" + socket.id);
+  // });
 
-        onlineUsers.push({
-          userId: userId,
-          socket: socket.id,
-        });
+  //
 
-        if (userId) {
-          if (onlineUsers.length == 0) {
-            io.to("admin").emit("send_connection", {
-              status: "offline",
-            });
-          } else {
-            onlineUsers.map((userStatus) => {
-              if (userStatus.userId == Number(userId)) {
-                io.to("admin").emit("send_connection", {
-                  userId: userId,
-                  status: "online",
-                });
-              } else {
-                io.to("admin").emit("send_connection", {
-                  userId: userId,
-                  status: "offline",
-                });
-              }
-            });
-          }
-        }
-      }
+  // socket.on("disconnect", (e) => {
+  //   const user = onlineUsers.find((u) => u.socket === socket.id);
 
-      console.log(mapRooms);
-      if (role == "admin") {
-        socket.join("admin");
+  //   if (!user) return;
 
-        if (userId) {
-          socket.join(room);
-        }
-      }
+  //   onlineUsers = onlineUsers.filter((u) => u.socket !== socket.id);
 
-      chats[room] = await loadMessages(userId);
-      socket.emit("update_msg", chats[room]);
-    }
+  //   io.to("admin").emit("send_connection", {
+  //     userId: user.userId,
+  //     status: "offline",
+  //   });
+  // });
 
-    if (role == "admin") {
-      socket.emit("sendUser", await loadAllUser());
+  // socket.on("join_chat", async ({ userId, role }) => {
+  //   let room;
 
-      if (userId != null && userId !== "") {
-        socket.emit("send_userSelect", await loadUser(userId));
-      }
-    }
-  });
+  //   if (userId != null && userId !== "") {
+  //     room = `user_${userId}`;
 
-  socket.on("recoveredMessage", async ({ userId }) => {
-    const room = `user_${userId}`;
+  //     console.log(role);
+  //     if (role == "user") {
+  //       let loadUSer = await loadUser(userId);
 
-    const message = await loadMessages(userId);
+  //       if (loadUSer == [] || loadUSer.length == 0) {
+  //         await saveUser(userId);
+  //       }
 
-    chats[room] = message;
+  //       onlineUsers.push({
+  //         userId: userId,
+  //         socket: socket.id,
+  //       });
 
-    if (!chats[room]) chats[room] = [];
+  //       if (userId) {
+  //         if (onlineUsers.length == 0) {
+  //           io.to("admin").emit("send_connection", {
+  //             status: "offline",
+  //           });
+  //         } else {
+  //           onlineUsers.map((userStatus) => {
+  //             if (userStatus.userId == Number(userId)) {
+  //               io.to("admin").emit("send_connection", {
+  //                 userId: userId,
+  //                 status: "online",
+  //               });
+  //             } else {
+  //               io.to("admin").emit("send_connection", {
+  //                 userId: userId,
+  //                 status: "offline",
+  //               });
+  //             }
+  //           });
+  //         }
+  //       }
+  //     }
 
-    io.to(room).emit("update_msg", chats[room]);
-    io.to("admin").emit("sendUser", await loadAllUser());
-  });
+  //     console.log(mapRooms);
+  //     if (role == "admin") {
+  //       socket.join("admin");
 
-  socket.on("new_msg", async ({ userId }) => {
-    loadAndSendData(userId, socket);
-  });
+  //       if (userId) {
+  //         socket.join(room);
+  //       }
+  //     }
 
-  socket.on("admin_msg", async ({ userId }) => {
-    loadAndSendData(userId, socket);
-  });
+  //     chats[room] = await loadMessages(userId);
+  //     socket.emit("update_msg", chats[room]);
+  //   }
+
+  //   if (role == "admin") {
+  //     socket.emit("sendUser", await loadAllUser());
+
+  //     if (userId != null && userId !== "") {
+  //       socket.emit("send_userSelect", await loadUser(userId));
+  //     }
+  //   }
+  // });
+
+  // socket.on("recoveredMessage", async ({ userId }) => {
+  //   const room = `user_${userId}`;
+
+  //   const message = await loadMessages(userId);
+
+  //   chats[room] = message;
+
+  //   if (!chats[room]) chats[room] = [];
+
+  //   io.to(room).emit("update_msg", chats[room]);
+  //   io.to("admin").emit("sendUser", await loadAllUser());
+  // });
+
+  // socket.on("new_msg", async ({ userId }) => {
+  //   loadAndSendData(userId, socket);
+  // });
+
+  // socket.on("admin_msg", async ({ userId }) => {
+  //   loadAndSendData(userId, socket);
+  // });
 });
 
 async function loadAndSendData(userId, socket) {
@@ -150,7 +172,7 @@ async function loadAndSendData(userId, socket) {
   io.to("admin").emit("sendUser", users);
 }
 
-// FETCH's E GET's
+// ========== FETCH API ===================
 
 async function loadMessages(userId) {
   try {

@@ -81,13 +81,17 @@
       this.toggleChat();
 
       await this.loadScript(this.config.socketUrl + "/socket.io/socket.io.js");
-      let socket = io(this.config.socketUrl);
+      let socket = io(this.config.socketUrl + "/suport");
 
       const form = document.querySelector("#msg_form");
       let userId = this.config.userId;
       let role = this.config.role;
 
-      socket.emit("join_chat", { userId, role });
+      // socket.emit("join_chat", { userId, role });
+
+      socket.on("hola", (event) => {
+        console.log(event);
+      });
 
       socket.on("update_msg", (message) => {
         updateMessagesOnScreen(message);
@@ -173,12 +177,9 @@
         }, 50);
       }
 
+      // CONEXÃO SOCKET
       socket.on("connect", () => {
-        if (userId == null || userId == "") {
-          setEmptyState();
-        }
-
-        socket.emit("join_chat", { userId, role });
+        socket.emit("suport:init", { userId });
       });
 
       form.addEventListener("submit", (e) => {
