@@ -84,17 +84,28 @@
       let socket = io(this.config.socketUrl + "/suport");
 
       const form = document.querySelector("#msg_form");
-      let userId = this.config.userId;
+      const USER_ID = this.config.userId;
       let role = this.config.role;
 
       // socket.emit("join_chat", { userId, role });
 
-      socket.on("hola", (event) => {
-        console.log(event);
-      });
+      // CONEXÃO SOCKET
+      socket.on("connect", () => {
+        socket.emit(
+          "room:user",
+          {
+            userID: USER_ID,
+          },
+          (res) => {
+            console.log(res); //6j54kfkjUSmL7lANAAAB
+            socket.emit("request:message", { userID: USER_ID });
+          },
+        );
 
-      socket.on("update_msg", (message) => {
-        updateMessagesOnScreen(message);
+        socket.on("update:message", async (message) => {
+          console.log(message);
+          updateMessagesOnScreen(message);
+        });
       });
 
       function updateMessagesOnScreen(msgs) {
@@ -176,11 +187,6 @@
           });
         }, 50);
       }
-
-      // CONEXÃO SOCKET
-      socket.on("connect", () => {
-        socket.emit("suport:init", { userId });
-      });
 
       form.addEventListener("submit", (e) => {
         e.preventDefault();
