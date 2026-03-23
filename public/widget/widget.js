@@ -19,9 +19,9 @@
           </div>
         </div>
         <div class="header-info">
-          <h6 class="mb-0 fw-bold">Suporte IPAchat</h6>
+          <h6 class="mb-0 fw-bold">Matheus Nunes</h6>
           <div class="d-flex align-items-center gap-1">
-            <small class="text-white-50">Como podemos ajudar?</small>
+            <small id="msg_welcome" class="text-white-50"></small>
           </div>
         </div>
       </div>
@@ -79,6 +79,8 @@
       this.loadBootstrap();
       this.injectCSS();
       this.toggleChat();
+      await this.loadScript("https://unpkg.com/lucide@latest");
+      lucide.createIcons();
 
       await this.loadScript(this.config.socketUrl + "/socket.io/socket.io.js");
       let socket = io(this.config.socketUrl + "/suport");
@@ -86,8 +88,6 @@
       const form = document.querySelector("#msg_form");
       const USER_ID = this.config.userId;
       let role = this.config.role;
-
-      // socket.emit("join_chat", { userId, role });
 
       // CONEXÃO SOCKET
       socket.on("connect", () => {
@@ -97,15 +97,42 @@
             userID: USER_ID,
           },
           (res) => {
-            console.log(res); //6j54kfkjUSmL7lANAAAB
+            console.log(res.load_user[0]);
+            document.querySelector("#msg_welcome").innerHTML =
+              "Bem vindo, " + res.load_user[0].user + "!";
             socket.emit("request:message", { userID: USER_ID });
           },
         );
 
         socket.on("update:message", async (message) => {
-          console.log(message);
+          console.log("es");
           updateMessagesOnScreen(message);
         });
+      });
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const message = document.forms["msg_form"]["msg"].value;
+        document.forms["msg_form"]["msg"].value = "";
+
+        if (message.trim() == "") {
+          alert("A mensagem não pode ser vazia!");
+          return;
+        }
+
+        document.forms["msg_form"]["msg"].value = "";
+
+        socket.emit(
+          "insert:msg",
+          { userID: USER_ID, message, status: "user" },
+          (res) => {
+            console.log(res);
+            if (res.status) {
+              socket.emit("request:message", { userID: USER_ID });
+            }
+          },
+        );
       });
 
       function updateMessagesOnScreen(msgs) {
@@ -187,44 +214,6 @@
           });
         }, 50);
       }
-
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-
-        if (!userId) {
-          alert("Defina um usuario!");
-          return;
-        }
-
-        const message = document.forms["msg_form"]["msg"].value;
-        document.forms["msg_form"]["msg"].value = "";
-
-        saveMessage(userId, "user", message);
-
-        socket.emit("new_msg", {
-          userId,
-        });
-      });
-
-      async function saveMessage(userId, role, message) {
-        await fetch("https://ipa-edu.com.br/ipasis/adm/send_message.php", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_id: userId,
-            message,
-            status: role,
-          }),
-        });
-
-        socket.emit("recoveredMessage", { userId });
-      }
-
-      // Carrega dependências de forma segura
-      await this.loadScript("https://unpkg.com/lucide@latest");
-      lucide.createIcons();
     }
 
     injectCSS() {
@@ -236,6 +225,15 @@
     --chat-secondary: #f4f6f9;
     --chat-text: #333;
   }
+
+   /* Timestamp (Opcional - caso queira adicionar hora depois) */
+      .msg-time {
+        display: block;
+        font-size: 0.7rem;
+        margin-top: 4px;
+        opacity: 0.7;
+        text-align: right;
+      }
 
   #chat-widget-container {
     position: fixed;

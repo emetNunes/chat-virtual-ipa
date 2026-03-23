@@ -23,6 +23,7 @@ const server = app.listen(3000, () => {
 });
 
 const io = socketIO(server, {
+  connectionStateRecovery: {},
   cors: {
     origin: "*",
   },
@@ -32,13 +33,21 @@ const io = socketIO(server, {
 
 const chats = {};
 let onlineUsers = [];
-let allUser = [];
 let mapRooms;
 
 const suportNamespace = io.of("/suport");
 const users = new Users();
 
 suportNamespace.on("connection", (socket) => {
+  socket.on("disconnect", (e) => {
+    const user = onlineUsers.find((u) => u.socket === socket.id);
+
+    if (!user) return;
+
+    onlineUsers = onlineUsers.filter((u) => u.socket !== socket.id);
+    suportNamespace.to("admin").emit("update:connections", onlineUsers);
+  });
+
   // ADMIN
   socket.on("room:admin", async (adminID, callback) => {
     try {
@@ -67,42 +76,108 @@ suportNamespace.on("connection", (socket) => {
     suportNamespace.to("admin").emit("update:users", await users.loadAllUser());
   });
 
-  socket.on("request:user", ({ userID }, callback) => {
+  // Enviar todos os usuarios onlines cadastrados.
+  socket.on("request:connections", () => {
+    suportNamespace.to("admin").emit("update:connections", onlineUsers);
+  });
+
+  socket.on("request:user", async ({ userID }, callback) => {
     try {
+      socket.leave();
+
       if (userID == "") throw new Error("ID do usuario incorreto ou vazio!");
 
-      if (!mapRooms.get(userID)) throw new Error("Usuario não tem sala!");
+      const user = new User(userID);
+      const load_user = await user.loadUser();
 
-      socket.leave();
+      if (load_user.user === "")
+        throw new Error("Falha ao carregar informações do usuario!");
+
+      const roomUser = !mapRooms.get(userID);
       socket.join(userID);
 
       callback({
         id: userID,
         status: true,
-        room: socket.id,
+        room: roomUser ? "Usuario não tem sala!" : socket.id,
+        load_user,
       });
     } catch ({ message }) {
       callback({
         id: userID,
-        room: socket.id,
+        room: roomUser ? "Usuario não tem sala!" : socket.id,
         status: false,
         msg: message,
+        load_user,
       });
     }
   });
 
+  // ------------------------------------------------------------------------
+  // GLOBAL
+  // Enviar mensagem para o USUARIO/ADMIN
+  socket.on("insert:msg", async ({ userID, message, status }, callback) => {
+    try {
+      if (userID == "") throw new Error("ID do usuario incorreto ou vazio!");
+
+      if (message.trim() == "")
+        throw new Error("A mensagem não pode ser vazia!");
+
+      if (status.trim() == "") throw new Error("Status não informado!");
+
+      const user = new User(userID);
+      const save_message = await user.saveMessage(message, status);
+
+      suportNamespace.emit("update:message", await user.loadMessages());
+
+      suportNamespace
+        .to("admin")
+        .emit("update:users", await users.loadAllUser());
+
+      if (save_message.status !== "ok")
+        throw new Error("Falha ao salvar a mensagem!");
+
+      callback({
+        id: userID,
+        status: true,
+        msg_data: {
+          userID,
+          message,
+        },
+      });
+    } catch ({ message }) {
+      callback({
+        id: userID,
+        status: false,
+        msg: message,
+        msg_data: {
+          userID,
+          message,
+        },
+      });
+    }
+  });
+
+  // ------------------------------------------------------------------------
   // ALUNO/PROFISSIONAL
   // Definir sala para o usuario(Aluno/funcionario)
-  socket.on("room:user", ({ userID }, callback) => {
-    try {
-      console.log(userID);
 
+  socket.on("room:user", async ({ userID }, callback) => {
+    try {
       if (userID == "" || !userID)
         throw new Error("ID do usuario incorreto ou vazio!");
 
-      if (mapRooms.get(userID))
-        throw new Error("Usuario já entrou em uma sala!");
       socket.join(userID);
+
+      onlineUsers.push({
+        userId: userID,
+        socket: socket.id,
+      });
+
+      const user = new User(userID);
+      const load_user = await user.loadUser();
+
+      suportNamespace.to("admin").emit("update:connections", onlineUsers);
 
       if (!mapRooms.get(userID)) throw new Error("Usuario não entrou na sala!");
 
@@ -110,6 +185,7 @@ suportNamespace.on("connection", (socket) => {
         id: userID,
         status: true,
         room: socket.id,
+        load_user,
       });
     } catch ({ message }) {
       callback({
@@ -126,187 +202,5 @@ suportNamespace.on("connection", (socket) => {
     socket.emit("update:message", await user.loadMessages());
   });
 
-  // suportNamespace.to("room1").emit("hola", "sucesso!" + socket.id);
   mapRooms = socket.adapter.rooms;
 });
-
-io.on("connection1", (socket) => {
-  console.log("client conectado" + socket.id);
-
-  // socket.on("disconnect", () => {
-  //   console.log("client desconectou" + socket.id);
-  // });
-
-  //
-
-  // socket.on("disconnect", (e) => {
-  //   const user = onlineUsers.find((u) => u.socket === socket.id);
-
-  //   if (!user) return;
-
-  //   onlineUsers = onlineUsers.filter((u) => u.socket !== socket.id);
-
-  //   io.to("admin").emit("send_connection", {
-  //     userId: user.userId,
-  //     status: "offline",
-  //   });
-  // });
-
-  // socket.on("join_chat", async ({ userId, role }) => {
-  //   let room;
-
-  //   if (userId != null && userId !== "") {
-  //     room = `user_${userId}`;
-
-  //     console.log(role);
-  //     if (role == "user") {
-  //       let loadUSer = await loadUser(userId);
-
-  //       if (loadUSer == [] || loadUSer.length == 0) {
-  //         await saveUser(userId);
-  //       }
-
-  //       onlineUsers.push({
-  //         userId: userId,
-  //         socket: socket.id,
-  //       });
-
-  //       if (userId) {
-  //         if (onlineUsers.length == 0) {
-  //           io.to("admin").emit("send_connection", {
-  //             status: "offline",
-  //           });
-  //         } else {
-  //           onlineUsers.map((userStatus) => {
-  //             if (userStatus.userId == Number(userId)) {
-  //               io.to("admin").emit("send_connection", {
-  //                 userId: userId,
-  //                 status: "online",
-  //               });
-  //             } else {
-  //               io.to("admin").emit("send_connection", {
-  //                 userId: userId,
-  //                 status: "offline",
-  //               });
-  //             }
-  //           });
-  //         }
-  //       }
-  //     }
-
-  //     console.log(mapRooms);
-  //     if (role == "admin") {
-  //       socket.join("admin");
-
-  //       if (userId) {
-  //         socket.join(room);
-  //       }
-  //     }
-
-  //     chats[room] = await loadMessages(userId);
-  //     socket.emit("update_msg", chats[room]);
-  //   }
-
-  //   if (role == "admin") {
-  //     socket.emit("sendUser", await loadAllUser());
-
-  //     if (userId != null && userId !== "") {
-  //       socket.emit("send_userSelect", await loadUser(userId));
-  //     }
-  //   }
-  // });
-
-  // socket.on("recoveredMessage", async ({ userId }) => {
-  //   const room = `user_${userId}`;
-
-  //   const message = await loadMessages(userId);
-
-  //   chats[room] = message;
-
-  //   if (!chats[room]) chats[room] = [];
-
-  //   io.to(room).emit("update_msg", chats[room]);
-  //   io.to("admin").emit("sendUser", await loadAllUser());
-  // });
-
-  // socket.on("new_msg", async ({ userId }) => {
-  //   loadAndSendData(userId, socket);
-  // });
-
-  // socket.on("admin_msg", async ({ userId }) => {
-  //   loadAndSendData(userId, socket);
-  // });
-});
-
-async function loadAndSendData(userId, socket) {
-  const room = `user_${userId}`;
-
-  if (chats[room] == undefined) {
-    socket.emit("update_msg", { erro: "sala não localizada!" });
-    return;
-  }
-
-  const messages = await loadMessages(userId);
-  chats[room] = messages;
-
-  io.to(room).emit("update_msg", chats[room]);
-
-  const users = await loadAllUser();
-
-  // console.log(socket);
-
-  io.to("admin").emit("sendUser", users);
-}
-
-// ========== FETCH API ===================
-
-async function loadMessages(userId) {
-  try {
-    const res = await fetch(
-      `https://ipa-edu.com.br/ipasis/adm/get_messages.php?user_id=${userId}`,
-    );
-
-    if (!res.ok) {
-      throw new Error("Erro HTTP");
-    }
-
-    return await res.json();
-  } catch (err) {
-    console.error("Erro ao carregar mensagens:", err);
-
-    return [];
-  }
-}
-
-async function loadUser(userId) {
-  try {
-    const res = await fetch(
-      `https://ipa-edu.com.br/ipasis/adm/get_user.php?user_id=${userId}`,
-    );
-
-    if (!res.ok) {
-      throw new Error("Erro HTTP");
-    }
-
-    return await res.json();
-  } catch (err) {
-    console.error("Erro ao carregar usuario:", err);
-
-    return [];
-  }
-}
-
-async function saveUser(userId) {
-  await fetch("https://ipa-edu.com.br/ipasis/adm/send_user.php", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      user_id: userId,
-    }),
-  });
-
-  const user = await loadUser(userId);
-  return user;
-}
