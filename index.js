@@ -128,7 +128,9 @@ suportNamespace.on("connection", (socket) => {
       const user = new User(userID);
       const save_message = await user.saveMessage(message, status);
 
-      suportNamespace.emit("update:message", await user.loadMessages());
+      suportNamespace
+        .to(userID)
+        .emit("update:message", await user.loadMessages());
 
       suportNamespace
         .to("admin")

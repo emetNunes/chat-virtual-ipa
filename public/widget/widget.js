@@ -83,7 +83,7 @@
       lucide.createIcons();
 
       await this.loadScript(this.config.socketUrl + "/socket.io/socket.io.js");
-      let socket = io("https://chat-virtual-ipa.onrender.com/suport");
+      let socket = io("/suport");
 
       const form = document.querySelector("#msg_form");
       const USER_ID = this.config.userId;
