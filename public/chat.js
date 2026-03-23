@@ -63,8 +63,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Recupara todas as mensagens do Usuario clicado
-    socket.on("update:message", async (message) => {
-      hooks.updateMessagesOnScreen(message);
+    socket.on("update:message", async (message, userIDRequest) => {
+      console.log(0);
+      if (USER_ID == userIDRequest) {
+        hooks.updateMessagesOnScreen(message);
+      }
     });
   });
 

@@ -130,7 +130,7 @@ suportNamespace.on("connection", (socket) => {
 
       suportNamespace
         .to(userID)
-        .emit("update:message", await user.loadMessages());
+        .emit("update:message", await user.loadMessages(), userID);
 
       suportNamespace
         .to("admin")
@@ -201,7 +201,7 @@ suportNamespace.on("connection", (socket) => {
 
   socket.on("request:message", async ({ userID }) => {
     const user = new User(userID);
-    socket.emit("update:message", await user.loadMessages());
+    socket.emit("update:message", await user.loadMessages(), userID);
   });
 
   mapRooms = socket.adapter.rooms;
