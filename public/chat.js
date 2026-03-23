@@ -2,8 +2,8 @@ let USER_ID;
 const adminID = 1;
 const role = "admin";
 const socket = io("/suport");
-
 import Hooks from "/hook";
+
 const hooks = new Hooks();
 
 document.addEventListener("DOMContentLoaded", () => {
